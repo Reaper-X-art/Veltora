@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Veltora — Crypto Search</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      min-height: 100vh;
+      background: #1a1a1a;
+      color: #ffffff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow-x: hidden;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      font-size: 3rem;
+      font-weight: 900;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 2rem;
+      animation: fadeInPulse 1.5s ease infinite;
+    }
+
+    .logo .icon {
+      margin-right: 0.5rem;
+      color: #00cc99;
+      animation: pulse 1.5s infinite;
+    }
+
+    .logo .text {
+      background: linear-gradient(90deg, #ffffff, #cccccc);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+    }
+
+    @keyframes fadeInPulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.9; }
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes modalPop {
+      from { transform: scale(0.7); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .search-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      padding: 2rem;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+      width: 100%;
+      max-width: 600px;
+      transition: transform 0.3s ease;
+    }
+
+    .search-container:focus-within {
+      transform: scale(1.02);
+    }
+
+    input[type="search"] {
+      width: 100%;
+      padding: 1rem;
+      font-size: 1.2rem;
+      border: none;
+      background: rgba(255, 255, 255, 0.05);
+      color: #ffffff;
+      border-radius: 8px;
+      outline: none;
+      text-align: center;
+    }
+
+    input[type="search"]::placeholder {
+      color: #cccccc;
+    }
+
+    .switch-container {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 60px;
+      height: 34px;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #333;
+      transition: 0.4s;
+      border-radius: 34px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 26px;
+      width: 26px;
+      left: 4px;
+      bottom: 4px;
+      background-color: #ffffff;
+      transition: 0.4s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider {
+      background-color: #007bff;
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(26px);
+    }
+
+    .switch-label {
+      font-size: 1rem;
+      font-weight: 500;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 1rem;
+    }
+
+    button {
+      padding: 0.8rem 1.5rem;
+      font-size: 1rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.3s, transform 0.2s;
+      background: #333333;
+      color: #ffffff;
+    }
+
+    button:hover:not(:disabled) {
+      background: #444444;
+      transform: translateY(-2px);
+    }
+
+    button:disabled {
+      background: #555555;
+      cursor: not-allowed;
+    }
+
+    #results {
+      width: 100%;
+      max-width: 800px;
+      margin-top: 2rem;
+      padding: 1rem;
+      animation: slideUp 0.5s ease;
+      opacity: 0;
+      transform: translateY(20px);
+    }
+
+    #results.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .coin-card {
+      background: #2a2a2a;
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+      transition: transform 0.3s;
+      cursor: pointer;
+    }
+
+    .coin-card:hover {
+      transform: translateY(-5px);
+    }
+
+    .coin-header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .coin-logo {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: #333;
+    }
+
+    .coin-name {
+      font-size: 1.2rem;
+      font-weight: 600;
+    }
+
+    .coin-symbol {
+      font-size: 0.9rem;
+      color: #cccccc;
+    }
+
+    .coin-stats {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .stat {
+      font-size: 0.9rem;
+      color: #ffffff;
+    }
+
+    .stat.positive { color: #00cc99; }
+    .stat.negative { color: #ff6666; }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.6);
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .modal-content {
+      background: #2a2a2a;
+      padding: 2rem;
+      border-radius: 12px;
+      max-width: 500px;
+      width: 90%;
+      animation: modalPop 0.4s ease;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      color: #ffffff;
+      cursor: pointer;
+    }
+
+    .modal-stats {
+      margin-bottom: 1.5rem;
+    }
+
+    .modal-stat {
+      font-size: 1rem;
+      margin: 0.5rem 0;
+    }
+
+    .modal-chart {
+      width: 100%;
+      height: 200px;
+    }
+
+    .spinner {
+      border: 4px solid #333;
+      border-top: 4px solid #ffffff;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      animation: spin 1s linear infinite;
+      margin: 1rem auto;
+    }
+
+    @media (max-width: 600px) {
+      .search-container {
+        padding: 1rem;
+      }
+      .button-group {
+        flex-direction: column;
+        width: 100%;
+      }
+      button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="logo">
+    <span class="text">VELTORA</span>
+  </div>
+  <div class="search-container" role="search">
+    <input
+      type="search"
+      id="search"
+      placeholder="Search cryptocurrencies"
+      aria-label="Search cryptocurrencies"
+      autocomplete="off"
+    />
+    <div class="switch-container">
+      <span class="switch-label">Standard Coins</span>
+      <label class="switch">
+        <input type="checkbox" id="coin-type-switch">
+        <span class="slider"></span>
+      </label>
+      <span class="switch-label">Memecoins</span>
+    </div>
+    <div class="button-group">
+      <button id="search-btn" aria-label="Search">Search</button>
+      <button id="clear-btn" aria-label="Clear search" disabled>Clear</button>
+    </div>
+  </div>
+  <div id="results" class="empty">Start typing to search cryptocurrencies...</div>
+
+  <div id="modal" class="modal">
+    <div class="modal-content">
+      <button class="modal-close" aria-label="Close modal">✖</button>
+      <h2 id="modal-title"></h2>
+      <div class="modal-stats" id="modal-stats"></div>
+      <canvas id="modal-chart" class="modal-chart"></canvas>
+    </div>
+  </div>
+
+  <script>
+    const searchInput = document.getElementById('search');
+    const resultsDiv = document.getElementById('results');
+    const searchBtn = document.getElementById('search-btn');
+    const clearBtn = document.getElementById('clear-btn');
+    const coinTypeSwitch = document.getElementById('coin-type-switch');
+    const modal = document.getElementById('modal');
+    const modalTitle = document.getElementById('modal-title');
+    const modalStats = document.getElementById('modal-stats');
+    const modalChartCanvas = document.getElementById('modal-chart');
+    let modalChart;
+
+    const memecoinIds = ['dogecoin', 'shiba-inu', 'pepe', 'bonk']; // Known memecoin IDs
+    const standardCoinIds = ['bitcoin', 'ethereum', 'binancecoin', 'cardano', 'solana']; // Major coin IDs including Solana
+
+    function formatNumber(num) {
+      if (num === null || num === undefined) return '-';
+      return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 8 });
+    }
+
+    function setLoading(isLoading) {
+      if (isLoading) {
+        resultsDiv.innerHTML = '<div class="spinner" role="status" aria-live="polite" aria-label="Loading"></div>';
+        resultsDiv.classList.remove('empty');
+      }
+    }
+
+    function setEmpty(message = 'No cryptocurrencies found.') {
+      resultsDiv.className = 'empty';
+      resultsDiv.textContent = message;
+    }
+
+    async function fetchCryptoData(query) {
+      if (!query) {
+        resultsDiv.className = 'empty';
+        resultsDiv.textContent = 'Start typing to search cryptocurrencies...';
+        clearBtn.disabled = true;
+        return;
+      }
+
+      setLoading(true);
+      clearBtn.disabled = false;
+
+      try {
+        const searchResponse = await fetch(`https://api.coingecko.com/api/v3/search?query=${encodeURIComponent(query)}`);
+        const searchData = await searchResponse.json();
+
+        if (!searchData.coins.length) {
+          setEmpty('No cryptocurrencies found.');
+          return;
+        }
+
+        const ids = searchData.coins.map(c => c.id).join(',');
+        const marketResponse = await fetch(`https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${ids}&order=market_cap_desc&per_page=10&page=1&sparkline=true`);
+        let marketData = await marketResponse.json();
+
+        const isMemecoins = coinTypeSwitch.checked;
+        marketData = marketData.filter(coin => {
+          if (isMemecoins) {
+            return memecoinIds.includes(coin.id.toLowerCase());
+          } else {
+            return standardCoinIds.includes(coin.id.toLowerCase()) || !memecoinIds.includes(coin.id.toLowerCase());
+          }
+        });
+
+        if (!marketData.length) {
+          setEmpty(`No ${isMemecoins ? 'memecoins' : 'standard coins'} found.`);
+          return;
+        }
+
+        resultsDiv.classList.add('visible');
+        resultsDiv.innerHTML = marketData.map(coin => {
+          const priceChange = coin.price_change_percentage_24h ?? 0;
+          const changeClass = priceChange >= 0 ? 'positive' : 'negative';
+
+          return `
+            <div class="coin-card" data-id="${coin.id}">
+              <div class="coin-header">
+                <img src="${coin.image}" alt="${coin.name} logo" class="coin-logo" loading="lazy" />
+                <div>
+                  <div class="coin-name">${coin.name}</div>
+                  <div class="coin-symbol">${coin.symbol.toUpperCase()}</div>
+                </div>
+              </div>
+              <div class="coin-stats">
+                <div class="stat">Price: $${formatNumber(coin.current_price)}</div>
+                <div class="stat">Market Cap: $${formatNumber(coin.market_cap)}</div>
+                <div class="stat">24h Volume: $${formatNumber(coin.total_volume)}</div>
+                <div class="stat ${changeClass}">24h Change: ${priceChange.toFixed(2)}%</div>
+              </div>
+            </div>`;
+        }).join('');
+
+        document.querySelectorAll('.coin-card').forEach(card => {
+          card.addEventListener('click', async () => {
+            const id = card.dataset.id;
+            const response = await fetch(`https://api.coingecko.com/api/v3/coins/${id}?sparkline=true`);
+            const coin = await response.json();
+            const marketData = coin.market_data;
+
+            modalTitle.textContent = `${coin.name} (${coin.symbol.toUpperCase()})`;
+            modalStats.innerHTML = `
+              <div class="modal-stat">Price: $${formatNumber(marketData.current_price.usd)}</div>
+              <div class="modal-stat">Market Cap: $${formatNumber(marketData.market_cap.usd)}</div>
+              <div class="modal-stat">24h Volume: $${formatNumber(marketData.total_volume.usd)}</div>
+              <div class="modal-stat ${marketData.price_change_percentage_24h >= 0 ? 'positive' : 'negative'}">24h Change: ${marketData.price_change_percentage_24h.toFixed(2)}%</div>
+              <div class="modal-stat">All-Time High: $${formatNumber(marketData.ath.usd)}</div>
+              <div class="modal-stat">All-Time Low: $${formatNumber(marketData.atl.usd)}</div>
+              <div class="modal-stat">Circulating Supply: ${formatNumber(marketData.circulating_supply)}</div>
+              <div class="modal-stat">Total Supply: ${formatNumber(marketData.total_supply)}</div>
+            `;
+
+            if (modalChart) modalChart.destroy();
+
+            modalChart = new Chart(modalChartCanvas, {
+              type: 'line',
+              data: {
+                labels: coin.sparkline_in_7d.price.map((_, i) => i),
+                datasets: [{
+                  label: '7-Day Price Trend',
+                  data: coin.sparkline_in_7d.price,
+                  borderColor: '#00cc99',
+                  fill: false,
+                  pointRadius: 0,
+                  tension: 0.1
+                }]
+              },
+              options: {
+                scales: { x: { display: false }, y: { beginAtZero: false } },
+                plugins: { legend: { display: false } },
+                responsive: true,
+                maintainAspectRatio: false
+              }
+            });
+
+            modal.style.display = 'flex';
+          });
+        });
+
+      } catch (error) {
+        setEmpty('Error fetching data. Try again later.');
+        console.error(error);
+      }
+    }
+
+    let debounceTimer;
+    searchInput.addEventListener('input', () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        fetchCryptoData(searchInput.value.trim());
+      }, 450);
+
+      clearBtn.disabled = searchInput.value.trim() === '';
+    });
+
+    searchBtn.addEventListener('click', () => {
+      fetchCryptoData(searchInput.value.trim());
+    });
+    searchInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        fetchCryptoData(searchInput.value.trim());
+      }
+    });
+
+    clearBtn.addEventListener('click', () => {
+      searchInput.value = '';
+      resultsDiv.className = 'empty';
+      resultsDiv.textContent = 'Start typing to search cryptocurrencies...';
+      clearBtn.disabled = true;
+      searchInput.focus();
+      if (modalChart) modalChart.destroy();
+      modal.style.display = 'none';
+    });
+
+    coinTypeSwitch.addEventListener('change', () => {
+      if (searchInput.value.trim()) {
+        fetchCryptoData(searchInput.value.trim());
+      }
+    });
+
+    document.querySelector('.modal-close').addEventListener('click', () => {
+      modal.style.display = 'none';
+      if (modalChart) modalChart.destroy();
+    });
+
+    clearBtn.disabled = true;
+  </script>
+</head>
+</html>
